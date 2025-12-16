@@ -308,6 +308,9 @@ async def evaluate_solvency(
             status_code=422,
         )
     
+    # Type narrowing: canonical_request is guaranteed non-None when validation passes
+    assert canonical_request is not None, "canonical_request should not be None when validation passes"
+    
     # Step 3: Check idempotency
     existing_claim_id = idempotency.check_duplicate(
         request_hash=canonical_request.request_hash,
@@ -328,6 +331,7 @@ async def evaluate_solvency(
             status="accepted",
             message="Duplicate request - returning existing claim",
             trace_id=trace_id,
+            estimated_completion_seconds=None,
         )
         
         return JSONResponse(
@@ -407,8 +411,8 @@ def _create_refusal_response(
     reason: str,
     category: str,
     trace_id: str,
-    field_errors: list[dict[str, Any]] = None,
-    policy_violations: list[str] = None,
+    field_errors: Optional[list[dict[str, Any]]] = None,
+    policy_violations: Optional[list[str]] = None,
     status_code: int = 422,
 ) -> JSONResponse:
     """Create a structured refusal response."""

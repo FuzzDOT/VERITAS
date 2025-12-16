@@ -27,7 +27,7 @@ class OrchestrationRequest:
 
     claim_id: str
     priority: int = 0
-    metadata: dict = None
+    metadata: Optional[dict] = None
 
     def __post_init__(self):
         if self.metadata is None:

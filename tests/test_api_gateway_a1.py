@@ -273,7 +273,7 @@ class TestScenarioShock:
         """Shock percent is normalized to 4 decimal places."""
         shock = ScenarioShock(
             variable=ShockVariable.EQUITY_PRICE,
-            shock_percent=25.12345678,
+            shock_percent=Decimal("25.12345678"),
             time_horizon_months=12,
         )
         assert shock.shock_percent == Decimal("25.1235")
@@ -358,8 +358,8 @@ class TestStressScenario:
                 scenario_type=ScenarioType.ADVERSE,
                 name="Duplicate Test",
                 shocks=[
-                    ScenarioShock(variable=ShockVariable.INTEREST_RATE, shock_percent=10),
-                    ScenarioShock(variable=ShockVariable.INTEREST_RATE, shock_percent=20),
+                    ScenarioShock(variable=ShockVariable.INTEREST_RATE, shock_percent=Decimal("10")),
+                    ScenarioShock(variable=ShockVariable.INTEREST_RATE, shock_percent=Decimal("20")),
                 ],
             )
         assert "Duplicate shock variables" in str(exc_info.value)

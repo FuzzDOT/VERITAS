@@ -206,7 +206,7 @@ class StressScenario(BaseModel):
         description="List of shocks to apply"
     )
     description: Optional[str] = Field(
-        None,
+        default=None,
         max_length=2000,
         description="Detailed scenario description"
     )
@@ -298,19 +298,19 @@ class ThresholdConfiguration(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
     
     minimum_capital_ratio: Optional[Decimal] = Field(
-        None,
+        default=None,
         ge=Decimal("0.0"),
         le=Decimal("1.0"),
         description="Minimum required capital ratio (0.0-1.0)"
     )
     target_capital_ratio: Optional[Decimal] = Field(
-        None,
+        default=None,
         ge=Decimal("0.0"),
         le=Decimal("1.0"),
         description="Target capital ratio (0.0-1.0)"
     )
     liquidity_coverage_ratio: Optional[Decimal] = Field(
-        None,
+        default=None,
         ge=Decimal("0.0"),
         le=Decimal("10.0"),
         description="Minimum liquidity coverage ratio"
@@ -451,15 +451,15 @@ class SolvencyEvaluationRequest(BaseModel):
         description="Stress scenarios to evaluate"
     )
     thresholds: ThresholdConfiguration = Field(
-        default_factory=ThresholdConfiguration,
+        default_factory=lambda: ThresholdConfiguration(),
         description="Threshold configuration"
     )
     output_policy: OutputPolicy = Field(
-        default_factory=OutputPolicy,
+        default_factory=lambda: OutputPolicy(),
         description="Output generation policy"
     )
     evidence_policy: EvidencePolicy = Field(
-        default_factory=EvidencePolicy,
+        default_factory=lambda: EvidencePolicy(),
         description="Evidence requirements policy"
     )
     priority: Priority = Field(
