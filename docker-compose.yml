@@ -1,0 +1,336 @@
+version: "3.9"
+
+services:
+  # ==========================================================================
+  # Infrastructure Services
+  # ==========================================================================
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: truth-engine-postgres
+    environment:
+      POSTGRES_USER: truth_engine
+      POSTGRES_PASSWORD: truth_engine_dev
+      POSTGRES_DB: truth_engine
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U truth_engine -d truth_engine"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - truth-engine-network
+
+  minio:
+    image: minio/minio:latest
+    container_name: truth-engine-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio_dev
+      MINIO_ROOT_PASSWORD: minio_dev_secret
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - truth-engine-network
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: truth-engine-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 minio_dev minio_dev_secret;
+      mc mb local/truth-engine --ignore-existing;
+      mc anonymous set download local/truth-engine;
+      exit 0;
+      "
+    networks:
+      - truth-engine-network
+
+  # ==========================================================================
+  # Application Services
+  # ==========================================================================
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: truth-engine-api-gateway
+    command: >
+      uvicorn services.api_gateway.app:app 
+      --host 0.0.0.0 
+      --port 8000
+      --reload
+    environment:
+      - SERVICE_NAME=api-gateway
+      - SERVICE_VERSION=0.1.0
+      - ENVIRONMENT=development
+      - DEBUG=true
+      - LOG_LEVEL=INFO
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=truth_engine
+      - DB_USER=truth_engine
+      - DB_PASSWORD=truth_engine_dev
+      - S3_ENDPOINT_URL=http://minio:9000
+      - S3_ACCESS_KEY=minio_dev
+      - S3_SECRET_KEY=minio_dev_secret
+      - S3_BUCKET_NAME=truth-engine
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - truth-engine-network
+
+  truth-orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: truth-engine-orchestrator
+    command: >
+      uvicorn services.truth_orchestrator.app:app 
+      --host 0.0.0.0 
+      --port 8001
+      --reload
+    environment:
+      - SERVICE_NAME=truth-orchestrator
+      - PORT=8001
+      - DB_HOST=postgres
+      - DB_PASSWORD=truth_engine_dev
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - truth-engine-network
+
+  claim-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: truth-engine-claim-service
+    command: >
+      uvicorn services.claim_service.app:app 
+      --host 0.0.0.0 
+      --port 8002
+      --reload
+    environment:
+      - SERVICE_NAME=claim-service
+      - PORT=8002
+      - DB_HOST=postgres
+      - DB_PASSWORD=truth_engine_dev
+    ports:
+      - "8002:8002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - truth-engine-network
+
+  evidence-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: truth-engine-evidence-service
+    command: >
+      uvicorn services.evidence_service.app:app 
+      --host 0.0.0.0 
+      --port 8003
+      --reload
+    environment:
+      - SERVICE_NAME=evidence-service
+      - PORT=8003
+      - DB_HOST=postgres
+      - DB_PASSWORD=truth_engine_dev
+      - S3_ENDPOINT_URL=http://minio:9000
+      - S3_ACCESS_KEY=minio_dev
+      - S3_SECRET_KEY=minio_dev_secret
+    ports:
+      - "8003:8003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - truth-engine-network
+
+  extraction-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: truth-engine-extraction-service
+    command: >
+      uvicorn services.extraction_service.app:app 
+      --host 0.0.0.0 
+      --port 8004
+      --reload
+    environment:
+      - SERVICE_NAME=extraction-service
+      - PORT=8004
+      - DB_HOST=postgres
+      - DB_PASSWORD=truth_engine_dev
+    ports:
+      - "8004:8004"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - truth-engine-network
+
+  trace-audit-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: truth-engine-trace-audit-service
+    command: >
+      uvicorn services.trace_audit_service.app:app 
+      --host 0.0.0.0 
+      --port 8005
+      --reload
+    environment:
+      - SERVICE_NAME=trace-audit-service
+      - PORT=8005
+      - DB_HOST=postgres
+      - DB_PASSWORD=truth_engine_dev
+    ports:
+      - "8005:8005"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - truth-engine-network
+
+  truth-versioning-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: truth-engine-versioning-service
+    command: >
+      uvicorn services.truth_versioning_service.app:app 
+      --host 0.0.0.0 
+      --port 8006
+      --reload
+    environment:
+      - SERVICE_NAME=truth-versioning-service
+      - PORT=8006
+      - DB_HOST=postgres
+      - DB_PASSWORD=truth_engine_dev
+    ports:
+      - "8006:8006"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8006/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - truth-engine-network
+
+  report-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: truth-engine-report-service
+    command: >
+      uvicorn services.report_service.app:app 
+      --host 0.0.0.0 
+      --port 8007
+      --reload
+    environment:
+      - SERVICE_NAME=report-service
+      - PORT=8007
+      - DB_HOST=postgres
+      - DB_PASSWORD=truth_engine_dev
+      - S3_ENDPOINT_URL=http://minio:9000
+      - S3_ACCESS_KEY=minio_dev
+      - S3_SECRET_KEY=minio_dev_secret
+    ports:
+      - "8007:8007"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8007/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - truth-engine-network
+
+volumes:
+  postgres_data:
+  minio_data:
+
+networks:
+  truth-engine-network:
+    driver: bridge
