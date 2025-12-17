@@ -369,3 +369,140 @@ class FactClaimLink(TimestampMixin, Base):
         Index("ix_fact_claim_claim", "claim_id"),
     )
 
+
+# =============================================================================
+# A7: Trace & Audit Storage
+# =============================================================================
+
+
+class TraceGraphRecord(TimestampMixin, Base):
+    """
+    Persistent storage for reasoning trace graphs.
+    
+    Traces are immutable once created. They capture the complete
+    reasoning chain for a solvency evaluation.
+    """
+    
+    __tablename__ = "trace_graphs"
+    
+    id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    trace_hash: Mapped[str] = mapped_column(String(100), nullable=False, unique=True, index=True)
+    
+    # Links
+    evaluation_id: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    claim_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, index=True)
+    claim_hash: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    
+    # Graph structure (stored as JSONB)
+    nodes: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    edges: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    node_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    edge_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    
+    # Root node references
+    claim_node_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    conclusion_node_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    refusal_node_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    
+    # Versioning
+    engine_version: Mapped[str] = mapped_column(String(20), nullable=False)
+    trace_service_version: Mapped[str] = mapped_column(String(20), nullable=False)
+    
+    # Timestamp
+    built_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+    
+    __table_args__ = (
+        Index("ix_trace_evaluation", "evaluation_id"),
+        Index("ix_trace_claim", "claim_id"),
+        Index("ix_trace_hash", "trace_hash"),
+    )
+
+
+class AuditLogRecord(TimestampMixin, Base):
+    """
+    Append-only audit log for evaluations.
+    
+    Each evaluation writes exactly one audit record. Records are
+    chained by hash for tamper detection.
+    """
+    
+    __tablename__ = "audit_log"
+    
+    id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    audit_hash: Mapped[str] = mapped_column(String(100), nullable=False, unique=True, index=True)
+    
+    # Links
+    evaluation_id: Mapped[str] = mapped_column(String(50), nullable=False, unique=True, index=True)
+    
+    # Engine metadata
+    engine_version: Mapped[str] = mapped_column(String(20), nullable=False)
+    trace_service_version: Mapped[str] = mapped_column(String(20), nullable=False)
+    
+    # Input hashes
+    claim_hash: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    evidence_set_hash: Mapped[str] = mapped_column(String(100), nullable=False)
+    policy_hash: Mapped[str] = mapped_column(String(100), nullable=False)
+    
+    # Facts snapshot (JSONB for efficient storage)
+    facts_snapshot: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    facts_snapshot_hash: Mapped[str] = mapped_column(String(100), nullable=False)
+    
+    # Trace reference
+    trace_hash: Mapped[str] = mapped_column(String(100), nullable=False)
+    
+    # Result hash
+    result_hash: Mapped[str] = mapped_column(String(100), nullable=False)
+    
+    # Outcome
+    outcome: Mapped[str] = mapped_column(String(20), nullable=False)  # completed, refused, failed
+    
+    # Chain link
+    previous_audit_hash: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    chain_position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    
+    __table_args__ = (
+        Index("ix_audit_evaluation", "evaluation_id"),
+        Index("ix_audit_claim", "claim_hash"),
+        Index("ix_audit_hash", "audit_hash"),
+        Index("ix_audit_chain", "chain_position"),
+    )
+
+
+class AuditManifestRecord(TimestampMixin, Base):
+    """
+    Daily audit manifest for batch verification.
+    
+    Contains rolling hash of all audit records for a given date.
+    """
+    
+    __tablename__ = "audit_manifests"
+    
+    id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    manifest_hash: Mapped[str] = mapped_column(String(100), nullable=False, unique=True, index=True)
+    
+    # Date coverage
+    manifest_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, unique=True)
+    
+    # Record summary
+    record_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    first_audit_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    last_audit_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    
+    # Hash chain (JSONB list of record hashes)
+    record_hashes: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    rolling_hash: Mapped[str] = mapped_column(String(100), nullable=False)
+    
+    # Manifest chain
+    previous_manifest_hash: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    
+    # Object storage reference
+    object_key: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    
+    __table_args__ = (
+        Index("ix_manifest_date", "manifest_date"),
+        Index("ix_manifest_hash", "manifest_hash"),
+    )
