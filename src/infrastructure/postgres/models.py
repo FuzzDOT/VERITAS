@@ -648,3 +648,51 @@ class ClaimClassIndexRecord(TimestampMixin, Base):
         Index("ix_class_index_date", "as_of_date_bucket"),
         UniqueConstraint("claim_class_key", name="uq_claim_class_key"),
     )
+
+
+# =============================================================================
+# A9: Report Storage
+# =============================================================================
+
+
+class ReportRecord(TimestampMixin, Base):
+    """
+    Metadata for generated solvency reports.
+    
+    Reports are immutable artifacts generated from TruthVersions.
+    The canonical HTML is authoritative; PDF is a convenience artifact.
+    """
+    
+    __tablename__ = "report_records"
+    
+    id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    
+    # Source truth version
+    truth_version_id: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    
+    # Artifact hashes (canonical HTML is authoritative)
+    html_hash: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    pdf_hash: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    
+    # Storage URIs
+    html_uri: Mapped[str] = mapped_column(String(500), nullable=False)
+    pdf_uri: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    
+    # Versioning
+    renderer_version: Mapped[str] = mapped_column(String(20), nullable=False)
+    pdf_renderer_version: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    report_service_version: Mapped[str] = mapped_column(String(20), nullable=False)
+    
+    # Status
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="completed")
+    
+    __table_args__ = (
+        Index("ix_report_truth_version", "truth_version_id"),
+        Index("ix_report_html_hash", "html_hash"),
+        Index("ix_report_renderer", "renderer_version"),
+        # Unique constraint on truth_version_id + renderer_version for idempotency
+        UniqueConstraint(
+            "truth_version_id", "renderer_version",
+            name="uq_report_truth_renderer"
+        ),
+    )

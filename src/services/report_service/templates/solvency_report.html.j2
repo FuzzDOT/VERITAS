@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="Financial Solvency Truth Engine Report Service v{{ renderer_version }}">
+    <meta name="report-type" content="{{ report_type }}">
+    <meta name="truth-version-id" content="{{ evaluation_metadata.truth_version_id }}">
+    <meta name="generated-at" content="{{ evaluation_metadata.report_generated_at }}">
+    <title>Solvency Report - {{ claim.entity_id }} - {{ claim.as_of_date }}</title>
+    <style>
+        /* Deterministic styling - no external resources */
+        :root {
+            --color-primary: #1a365d;
+            --color-secondary: #2b6cb0;
+            --color-success: #276749;
+            --color-danger: #9b2c2c;
+            --color-warning: #975a16;
+            --color-border: #e2e8f0;
+            --color-bg-light: #f7fafc;
+            --color-text: #2d3748;
+            --color-text-muted: #718096;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-size: 12pt;
+            line-height: 1.5;
+            color: var(--color-text);
+            background: #fff;
+            padding: 2rem;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        header {
+            border-bottom: 3px solid var(--color-primary);
+            padding-bottom: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        h1 {
+            font-size: 1.75rem;
+            color: var(--color-primary);
+            margin-bottom: 0.5rem;
+        }
+        
+        h2 {
+            font-size: 1.25rem;
+            color: var(--color-primary);
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.25rem;
+            border-bottom: 1px solid var(--color-border);
+        }
+        
+        h3 {
+            font-size: 1rem;
+            color: var(--color-secondary);
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .subtitle {
+            color: var(--color-text-muted);
+            font-size: 1rem;
+        }
+        
+        .section {
+            margin-bottom: 1.5rem;
+        }
+        
+        .field-grid {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            gap: 0.5rem 1rem;
+        }
+        
+        .field-label {
+            font-weight: 600;
+            color: var(--color-text-muted);
+        }
+        
+        .field-value {
+            word-break: break-all;
+        }
+        
+        .conclusion-box {
+            padding: 1rem;
+            border-radius: 4px;
+            margin: 1rem 0;
+        }
+        
+        .conclusion-solvent {
+            background: #c6f6d5;
+            border: 1px solid var(--color-success);
+            color: var(--color-success);
+        }
+        
+        .conclusion-insolvent {
+            background: #fed7d7;
+            border: 1px solid var(--color-danger);
+            color: var(--color-danger);
+        }
+        
+        .conclusion-refused {
+            background: #fefcbf;
+            border: 1px solid var(--color-warning);
+            color: var(--color-warning);
+        }
+        
+        .conclusion-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        
+        .probability-bar {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        
+        .probability-interval {
+            flex: 1;
+            height: 24px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            position: relative;
+        }
+        
+        .probability-range {
+            position: absolute;
+            height: 100%;
+            background: var(--color-secondary);
+            opacity: 0.3;
+            border-radius: 4px;
+        }
+        
+        .probability-point {
+            position: absolute;
+            width: 4px;
+            height: 100%;
+            background: var(--color-primary);
+            border-radius: 2px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+        }
+        
+        th, td {
+            border: 1px solid var(--color-border);
+            padding: 0.5rem;
+            text-align: left;
+        }
+        
+        th {
+            background: var(--color-bg-light);
+            font-weight: 600;
+        }
+        
+        tr:nth-child(even) {
+            background: var(--color-bg-light);
+        }
+        
+        .hash-value {
+            font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+            font-size: 0.85rem;
+            word-break: break-all;
+        }
+        
+        .code-block {
+            background: var(--color-bg-light);
+            border: 1px solid var(--color-border);
+            border-radius: 4px;
+            padding: 1rem;
+            font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+            font-size: 0.85rem;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        
+        .risk-item {
+            padding: 0.5rem;
+            margin: 0.5rem 0;
+            background: var(--color-bg-light);
+            border-left: 3px solid var(--color-warning);
+        }
+        
+        .risk-type {
+            font-weight: 600;
+        }
+        
+        .risk-severity {
+            display: inline-block;
+            padding: 0.125rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        
+        .severity-high {
+            background: #fed7d7;
+            color: var(--color-danger);
+        }
+        
+        .severity-medium {
+            background: #fefcbf;
+            color: var(--color-warning);
+        }
+        
+        .severity-low {
+            background: #c6f6d5;
+            color: var(--color-success);
+        }
+        
+        footer {
+            margin-top: 3rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--color-border);
+            color: var(--color-text-muted);
+            font-size: 0.85rem;
+        }
+        
+        @media print {
+            body {
+                padding: 0;
+            }
+            
+            .container {
+                max-width: none;
+            }
+            
+            h2 {
+                page-break-after: avoid;
+            }
+            
+            table {
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <h1>Financial Solvency Determination Report</h1>
+            <p class="subtitle">{{ claim.canonical_claim_summary }}</p>
+        </header>
+        
+        <!-- Section 1: Claim Summary -->
+        <section class="section">
+            <h2>1. Claim Summary</h2>
+            <div class="field-grid">
+                <span class="field-label">Claim Class Key:</span>
+                <span class="field-value hash-value">{{ claim.claim_class_key }}</span>
+                
+                <span class="field-label">Entity:</span>
+                <span class="field-value">{{ claim.entity_id }} ({{ claim.entity_id_type }})</span>
+                
+                <span class="field-label">Jurisdiction:</span>
+                <span class="field-value">{{ claim.jurisdiction }}</span>
+                
+                <span class="field-label">Scenario:</span>
+                <span class="field-value">{{ claim.scenario_name }}</span>
+                
+                <span class="field-label">Horizon:</span>
+                <span class="field-value">{{ claim.horizon_months }} months</span>
+                
+                <span class="field-label">As-of Date:</span>
+                <span class="field-value">{{ claim.as_of_date }}</span>
+            </div>
+        </section>
+        
+        <!-- Section 2: Evaluation Metadata -->
+        <section class="section">
+            <h2>2. Evaluation Metadata</h2>
+            <div class="field-grid">
+                <span class="field-label">Evaluation ID:</span>
+                <span class="field-value hash-value">{{ evaluation_metadata.evaluation_id }}</span>
+                
+                <span class="field-label">Truth Version ID:</span>
+                <span class="field-value hash-value">{{ evaluation_metadata.truth_version_id }}</span>
+                
+                <span class="field-label">Engine Version:</span>
+                <span class="field-value">{{ evaluation_metadata.engine_version }}</span>
+                
+                <span class="field-label">Report Generated:</span>
+                <span class="field-value">{{ evaluation_metadata.report_generated_at }}</span>
+            </div>
+        </section>
+        
+        <!-- Section 3: Policy Summary -->
+        <section class="section">
+            <h2>3. Policy Configuration</h2>
+            <div class="field-grid">
+                <span class="field-label">Policy Hash:</span>
+                <span class="field-value hash-value">{{ policy_summary.policy_hash }}</span>
+                
+                <span class="field-label">Summary:</span>
+                <span class="field-value">{{ policy_summary.policy_summary }}</span>
+            </div>
+        </section>
+        
+        <!-- Section 4: Conclusion -->
+        <section class="section">
+            <h2>4. Determination</h2>
+            {% if conclusion.is_refusal %}
+            <div class="conclusion-box conclusion-refused">
+                <div class="conclusion-title">⚠ Evaluation Refused</div>
+                <p><strong>Refusal Code:</strong> {{ conclusion.refusal_code }}</p>
+                <p><strong>Reason:</strong> {{ conclusion.refusal_message }}</p>
+                {% if conclusion.missing_facts %}
+                <p><strong>Missing Facts:</strong></p>
+                <ul>
+                    {% for fact in conclusion.missing_facts %}
+                    <li>{{ fact }}</li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </div>
+            {% elif conclusion.conclusion == "solvent" %}
+            <div class="conclusion-box conclusion-solvent">
+                <div class="conclusion-title">✓ Solvent</div>
+                <p>The entity is determined to be solvent under the specified scenario.</p>
+            </div>
+            {% else %}
+            <div class="conclusion-box conclusion-insolvent">
+                <div class="conclusion-title">✗ Insolvent</div>
+                <p>The entity is determined to be insolvent under the specified scenario.</p>
+            </div>
+            {% endif %}
+        </section>
+        
+        <!-- Section 5: Probability Interval (if not refused) -->
+        {% if probability.has_probability %}
+        <section class="section">
+            <h2>5. Probability Interval</h2>
+            <div class="field-grid">
+                <span class="field-label">Lower Bound (P₁₀):</span>
+                <span class="field-value">{{ probability.p_low }} ({{ probability.p_low_pct }})</span>
+                
+                <span class="field-label">Point Estimate (P₅₀):</span>
+                <span class="field-value">{{ probability.p_mid }} ({{ probability.p_mid_pct }})</span>
+                
+                <span class="field-label">Upper Bound (P₉₀):</span>
+                <span class="field-value">{{ probability.p_high }} ({{ probability.p_high_pct }})</span>
+            </div>
+        </section>
+        {% endif %}
+        
+        <!-- Section 6: Risk Analysis -->
+        <section class="section">
+            <h2>6. Risk Analysis</h2>
+            
+            {% if risk_analysis.fragility_score %}
+            <h3>Fragility Assessment</h3>
+            <div class="field-grid">
+                <span class="field-label">Fragility Score:</span>
+                <span class="field-value">{{ risk_analysis.fragility_score }}</span>
+                
+                <span class="field-label">Interpretation:</span>
+                <span class="field-value">{{ risk_analysis.fragility_interpretation }}</span>
+            </div>
+            {% endif %}
+            
+            {% if risk_analysis.top_sensitivity_driver %}
+            <h3>Top Sensitivity Driver</h3>
+            <p>{{ risk_analysis.top_sensitivity_driver }}</p>
+            {% endif %}
+            
+            {% if risk_analysis.key_risks %}
+            <h3>Key Risks</h3>
+            {% for risk in risk_analysis.key_risks %}
+            <div class="risk-item">
+                <span class="risk-type">{{ risk.risk_type }}</span>
+                <span class="risk-severity severity-{{ risk.severity | lower }}">{{ risk.severity }}</span>
+                <p>{{ risk.description }}</p>
+            </div>
+            {% endfor %}
+            {% endif %}
+        </section>
+        
+        <!-- Section 7: Metrics Summary -->
+        {% if metrics_summary.metrics %}
+        <section class="section">
+            <h2>7. Intermediate Metrics</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Value</th>
+                        <th>Unit</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for metric in metrics_summary.metrics %}
+                    <tr>
+                        <td>{{ metric.name }}</td>
+                        <td>{{ metric.value }}</td>
+                        <td>{{ metric.unit }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+        {% endif %}
+        
+        <!-- Section 8: Integrity & Reproducibility -->
+        <section class="section">
+            <h2>8. Integrity & Reproducibility</h2>
+            
+            <h3>Hash Verification</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Component</th>
+                        <th>Hash</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if integrity.trace_id %}
+                    <tr>
+                        <td>Trace ID</td>
+                        <td class="hash-value">{{ integrity.trace_id }}</td>
+                    </tr>
+                    {% endif %}
+                    <tr>
+                        <td>Trace Hash</td>
+                        <td class="hash-value">{{ integrity.trace_hash }}</td>
+                    </tr>
+                    {% if integrity.audit_hash %}
+                    <tr>
+                        <td>Audit Hash</td>
+                        <td class="hash-value">{{ integrity.audit_hash }}</td>
+                    </tr>
+                    {% endif %}
+                    <tr>
+                        <td>Facts Snapshot Hash</td>
+                        <td class="hash-value">{{ integrity.facts_snapshot_hash }}</td>
+                    </tr>
+                    <tr>
+                        <td>Evidence Set Hash</td>
+                        <td class="hash-value">{{ integrity.evidence_set_hash }}</td>
+                    </tr>
+                    <tr>
+                        <td>Policy Hash</td>
+                        <td class="hash-value">{{ integrity.policy_hash }}</td>
+                    </tr>
+                    <tr>
+                        <td>Result Hash</td>
+                        <td class="hash-value">{{ integrity.result_hash }}</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h3>Replay Verification</h3>
+            <p>To verify the reproducibility of this determination, replay the evaluation using:</p>
+            <div class="code-block">{{ integrity.replay_instructions }}</div>
+        </section>
+        
+        <!-- Appendix A: Evidence Provenance -->
+        <section class="section">
+            <h2>Appendix A: Evidence Provenance</h2>
+            {% if provenance.evidence_list %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Evidence ID</th>
+                        <th>Source Type</th>
+                        <th>Published</th>
+                        <th>Retrieved</th>
+                        <th>SHA256</th>
+                        <th>Reliability</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ev in provenance.evidence_list %}
+                    <tr>
+                        <td class="hash-value">{{ ev.evidence_id }}</td>
+                        <td>{{ ev.source_type }}</td>
+                        <td>{{ ev.published_at or "N/A" }}</td>
+                        <td>{{ ev.retrieved_at or "N/A" }}</td>
+                        <td class="hash-value">{{ ev.sha256_hash[:16] }}...</td>
+                        <td>{{ ev.reliability }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p>No evidence records available.</p>
+            {% endif %}
+        </section>
+        
+        <!-- Appendix B: Fact Provenance -->
+        <section class="section">
+            <h2>Appendix B: Fact Provenance</h2>
+            {% if provenance.facts_list %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fact ID</th>
+                        <th>Type</th>
+                        <th>Value</th>
+                        <th>As-of Date</th>
+                        <th>Confidence</th>
+                        <th>Method</th>
+                        <th>Source Evidence</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fact in provenance.facts_list %}
+                    <tr>
+                        <td class="hash-value">{{ fact.fact_id }}</td>
+                        <td>{{ fact.fact_type }}</td>
+                        <td>{{ fact.value }}{% if fact.unit %} {{ fact.unit }}{% endif %}{% if fact.currency %} ({{ fact.currency }}){% endif %}</td>
+                        <td>{{ fact.as_of_date or "N/A" }}</td>
+                        <td>{{ fact.confidence }}</td>
+                        <td>{{ fact.extraction_method }}</td>
+                        <td class="hash-value">{{ fact.derived_from_evidence_id }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p>No fact records available.</p>
+            {% endif %}
+        </section>
+        
+        <!-- Footer -->
+        <footer>
+            <p>
+                This report was generated by the Financial Solvency Truth Engine.
+                Report Service Version: {{ renderer_version }} |
+                Generated: {{ evaluation_metadata.report_generated_at }}
+            </p>
+            <p>
+                For questions about this report, contact your system administrator.
+                This document is machine-verifiable using the hashes provided in Section 8.
+            </p>
+        </footer>
+    </div>
+</body>
+</html>
