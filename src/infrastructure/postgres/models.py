@@ -506,3 +506,145 @@ class AuditManifestRecord(TimestampMixin, Base):
         Index("ix_manifest_date", "manifest_date"),
         Index("ix_manifest_hash", "manifest_hash"),
     )
+
+
+# =============================================================================
+# A8: Truth Versioning Storage
+# =============================================================================
+
+
+class TruthVersionRecord(TimestampMixin, Base):
+    """
+    Immutable versioned truth outcome for a canonical solvency claim.
+    
+    Each record represents a complete, authoritative solvency determination
+    that can be compared across time through the claim class key.
+    """
+    
+    __tablename__ = "truth_versions_v2"
+    
+    id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    
+    # Claim class key (for grouping versions)
+    claim_class_key: Mapped[str] = mapped_column(String(500), nullable=False, index=True)
+    claim_class_components: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    
+    # Claim identity
+    canonical_claim_hash: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    canonical_claim_summary: Mapped[str] = mapped_column(Text, nullable=False)
+    
+    # Source evaluation
+    evaluation_id: Mapped[str] = mapped_column(String(50), nullable=False, unique=True, index=True)
+    
+    # Conclusion
+    conclusion: Mapped[str] = mapped_column(String(20), nullable=False)  # solvent, insolvent, refused
+    refusal_code: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    refusal_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    
+    # Probability interval (stored as JSONB for precision)
+    probability_interval: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    
+    # Risk analysis
+    fragility_score: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    key_risks: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    top_sensitivity_driver: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    
+    # Provenance hashes
+    engine_version: Mapped[str] = mapped_column(String(20), nullable=False)
+    evidence_set_hash: Mapped[str] = mapped_column(String(100), nullable=False)
+    facts_snapshot_hash: Mapped[str] = mapped_column(String(100), nullable=False)
+    policy_hash: Mapped[str] = mapped_column(String(100), nullable=False)
+    trace_hash: Mapped[str] = mapped_column(String(100), nullable=False)
+    result_hash: Mapped[str] = mapped_column(String(100), nullable=False)
+    
+    # Versioning
+    version_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="current")
+    supersedes_truth_version_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    superseded_by_truth_version_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    
+    # Service metadata
+    truth_service_version: Mapped[str] = mapped_column(String(20), nullable=False)
+    
+    __table_args__ = (
+        Index("ix_truth_v2_claim_class", "claim_class_key"),
+        Index("ix_truth_v2_claim_hash", "canonical_claim_hash"),
+        Index("ix_truth_v2_evaluation", "evaluation_id"),
+        Index("ix_truth_v2_status", "status"),
+        Index("ix_truth_v2_class_version", "claim_class_key", "version_number"),
+        UniqueConstraint("claim_class_key", "version_number", name="uq_truth_v2_class_version"),
+    )
+
+
+class RecomputeTaskRecord(TimestampMixin, Base):
+    """
+    Persistent queue for recomputation tasks.
+    
+    When evidence or facts change, impacted claim classes are queued
+    for recomputation.
+    """
+    
+    __tablename__ = "recompute_tasks"
+    
+    id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    
+    # Target
+    claim_class_key: Mapped[str] = mapped_column(String(500), nullable=False, index=True)
+    current_truth_version_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    
+    # Trigger info
+    triggered_by_evidence_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    triggered_by_entity_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    trigger_reason: Mapped[str] = mapped_column(Text, nullable=False)
+    
+    # Status
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
+    priority: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
+    
+    # Execution tracking
+    started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    result_evaluation_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    
+    __table_args__ = (
+        Index("ix_recompute_status", "status"),
+        Index("ix_recompute_priority", "priority"),
+        Index("ix_recompute_claim_class", "claim_class_key"),
+        Index("ix_recompute_pending", "status", "priority", "created_at"),
+    )
+
+
+class ClaimClassIndexRecord(TimestampMixin, Base):
+    """
+    Index mapping entities/evidence to claim class keys.
+    
+    Used for fast impact analysis when evidence changes.
+    """
+    
+    __tablename__ = "claim_class_index"
+    
+    id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    
+    # Claim class
+    claim_class_key: Mapped[str] = mapped_column(String(500), nullable=False, index=True)
+    
+    # Entity linkage
+    entity_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    entity_id_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    
+    # Evidence linkage (evidence that contributed to this claim class)
+    evidence_ids: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    
+    # Time range
+    as_of_date_bucket: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    
+    # Current version reference
+    current_truth_version_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    
+    __table_args__ = (
+        Index("ix_class_index_entity", "entity_id_type", "entity_id"),
+        Index("ix_class_index_evidence", "evidence_ids", postgresql_using="gin"),
+        Index("ix_class_index_date", "as_of_date_bucket"),
+        UniqueConstraint("claim_class_key", name="uq_claim_class_key"),
+    )
