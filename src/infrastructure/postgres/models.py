@@ -254,3 +254,118 @@ class Report(TimestampMixin, Base):
     content_hash: Mapped[str] = mapped_column(String(100), nullable=False)
     object_key: Mapped[str] = mapped_column(String(255), nullable=False)
     metadata_: Mapped[dict] = mapped_column("metadata", JSONB, default=dict)
+
+
+# =============================================================================
+# A6: Financial Fact Storage
+# =============================================================================
+
+
+class FinancialFactRecord(TimestampMixin, Base):
+    """
+    Persistent storage for extracted financial facts.
+    
+    Facts are the core data extracted from evidence by A5.
+    They are immutable once created and indexed for efficient
+    retrieval by entity, fact_type, and evidence.
+    """
+    
+    __tablename__ = "financial_facts"
+    
+    id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    fact_hash: Mapped[str] = mapped_column(String(100), nullable=False, unique=True, index=True)
+    
+    # Type
+    fact_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    category: Mapped[str] = mapped_column(String(50), nullable=False)
+    
+    # Value (stored as string for precision)
+    value: Mapped[str] = mapped_column(String(100), nullable=False)
+    unit: Mapped[str] = mapped_column(String(20), nullable=False)
+    currency: Mapped[Optional[str]] = mapped_column(String(3), nullable=True)
+    scale: Mapped[int] = mapped_column(Integer, default=0)
+    
+    # Temporal
+    as_of_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    period_start: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    period_end: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    fiscal_year: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    fiscal_quarter: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    
+    # Extraction metadata
+    confidence: Mapped[str] = mapped_column(String(20), nullable=False)
+    confidence_level: Mapped[str] = mapped_column(String(20), nullable=False)
+    extraction_method: Mapped[str] = mapped_column(String(20), nullable=False)
+    extractor_version: Mapped[str] = mapped_column(String(50), nullable=False)
+    
+    # Provenance
+    evidence_id: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    evidence_hash: Mapped[str] = mapped_column(String(100), nullable=False)
+    provenance: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    
+    # Entity linkage
+    entity_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
+    entity_id_type: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    
+    __table_args__ = (
+        Index("ix_facts_entity", "entity_id_type", "entity_id"),
+        Index("ix_facts_type_date", "fact_type", "as_of_date"),
+        Index("ix_facts_evidence", "evidence_id"),
+    )
+
+
+class EvidencePassageRecord(TimestampMixin, Base):
+    """
+    Persistent storage for extracted evidence passages.
+    
+    Passages provide human-readable provenance for facts
+    and capture key narrative items.
+    """
+    
+    __tablename__ = "evidence_passages"
+    
+    id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    passage_hash: Mapped[str] = mapped_column(String(100), nullable=False, unique=True, index=True)
+    
+    # Source
+    evidence_id: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    evidence_hash: Mapped[str] = mapped_column(String(100), nullable=False)
+    
+    # Location
+    page_number: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    section_title: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    xbrl_tag: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    
+    # Content
+    text_content: Mapped[str] = mapped_column(Text, nullable=False)
+    passage_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    
+    # Linkage
+    linked_fact_ids: Mapped[list] = mapped_column(JSONB, default=list)
+
+
+class FactClaimLink(TimestampMixin, Base):
+    """
+    Many-to-many link between facts and claims.
+    
+    Tracks which facts are used for which claims,
+    enabling audit trails.
+    """
+    
+    __tablename__ = "fact_claim_links"
+    
+    id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    fact_id: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    claim_id: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    linked_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+    
+    __table_args__ = (
+        UniqueConstraint("fact_id", "claim_id", name="uq_fact_claim"),
+        Index("ix_fact_claim_fact", "fact_id"),
+        Index("ix_fact_claim_claim", "claim_id"),
+    )
+
