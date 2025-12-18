@@ -1,0 +1,458 @@
+# =============================================================================
+# Financial Solvency Truth Engine - Production Docker Compose
+# =============================================================================
+# Usage:
+#   1. Copy .env.example to .env and configure production values
+#   2. docker compose -f docker-compose.prod.yml up -d
+#
+# For production deployments, consider:
+#   - Using managed PostgreSQL (AWS RDS, Cloud SQL, etc.)
+#   - Using AWS S3 instead of MinIO
+#   - Adding a reverse proxy (nginx/traefik) for SSL termination
+# =============================================================================
+
+services:
+  # ==========================================================================
+  # Infrastructure Services
+  # ==========================================================================
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: truth-engine-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    # Don't expose database port externally in production
+    # ports:
+    #   - "5432:5432"
+    expose:
+      - "5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - truth-engine-network
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  minio:
+    image: minio/minio:latest
+    container_name: truth-engine-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    # Don't expose MinIO console externally in production
+    # ports:
+    #   - "9000:9000"
+    #   - "9001:9001"
+    expose:
+      - "9000"
+      - "9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - truth-engine-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: truth-engine-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD};
+      mc mb local/truth-engine --ignore-existing;
+      exit 0;
+      "
+    networks:
+      - truth-engine-network
+
+  # ==========================================================================
+  # Application Services
+  # ==========================================================================
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: truth-engine-api-gateway
+    restart: unless-stopped
+    command: >
+      uvicorn services.api_gateway.app:app 
+      --host 0.0.0.0 
+      --port 8000
+      --workers 4
+      --no-access-log
+    environment:
+      - SERVICE_NAME=api-gateway
+      - SERVICE_VERSION=${SERVICE_VERSION:-0.1.0}
+      - ENVIRONMENT=production
+      - DEBUG=false
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${POSTGRES_DB}
+      - DB_USER=${POSTGRES_USER}
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - S3_ENDPOINT_URL=http://minio:9000
+      - S3_ACCESS_KEY=${MINIO_ROOT_USER}
+      - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD}
+      - S3_BUCKET_NAME=truth-engine
+      - DOCS_URL=${DOCS_URL:-}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - truth-engine-network
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+  truth-orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: truth-engine-orchestrator
+    restart: unless-stopped
+    command: >
+      uvicorn services.truth_orchestrator.app:app 
+      --host 0.0.0.0 
+      --port 8001
+      --workers 2
+      --no-access-log
+    environment:
+      - SERVICE_NAME=truth-orchestrator
+      - ENVIRONMENT=production
+      - DEBUG=false
+      - PORT=8001
+      - DB_HOST=postgres
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+    expose:
+      - "8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - truth-engine-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+
+  claim-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: truth-engine-claim-service
+    restart: unless-stopped
+    command: >
+      uvicorn services.claim_service.app:app 
+      --host 0.0.0.0 
+      --port 8002
+      --workers 2
+      --no-access-log
+    environment:
+      - SERVICE_NAME=claim-service
+      - ENVIRONMENT=production
+      - DEBUG=false
+      - PORT=8002
+      - DB_HOST=postgres
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+    expose:
+      - "8002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - truth-engine-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+
+  evidence-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: truth-engine-evidence-service
+    restart: unless-stopped
+    command: >
+      uvicorn services.evidence_service.app:app 
+      --host 0.0.0.0 
+      --port 8003
+      --workers 2
+      --no-access-log
+    environment:
+      - SERVICE_NAME=evidence-service
+      - ENVIRONMENT=production
+      - DEBUG=false
+      - PORT=8003
+      - DB_HOST=postgres
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - S3_ENDPOINT_URL=http://minio:9000
+      - S3_ACCESS_KEY=${MINIO_ROOT_USER}
+      - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD}
+    expose:
+      - "8003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - truth-engine-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+
+  extraction-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: truth-engine-extraction-service
+    restart: unless-stopped
+    command: >
+      uvicorn services.extraction_service.app:app 
+      --host 0.0.0.0 
+      --port 8004
+      --workers 2
+      --no-access-log
+    environment:
+      - SERVICE_NAME=extraction-service
+      - ENVIRONMENT=production
+      - DEBUG=false
+      - PORT=8004
+      - DB_HOST=postgres
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+    expose:
+      - "8004"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - truth-engine-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+
+  trace-audit-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: truth-engine-trace-audit-service
+    restart: unless-stopped
+    command: >
+      uvicorn services.trace_audit_service.app:app 
+      --host 0.0.0.0 
+      --port 8005
+      --workers 2
+      --no-access-log
+    environment:
+      - SERVICE_NAME=trace-audit-service
+      - ENVIRONMENT=production
+      - DEBUG=false
+      - PORT=8005
+      - DB_HOST=postgres
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+    expose:
+      - "8005"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - truth-engine-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+
+  truth-versioning-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: truth-engine-versioning-service
+    restart: unless-stopped
+    command: >
+      uvicorn services.truth_versioning_service.app:app 
+      --host 0.0.0.0 
+      --port 8006
+      --workers 2
+      --no-access-log
+    environment:
+      - SERVICE_NAME=truth-versioning-service
+      - ENVIRONMENT=production
+      - DEBUG=false
+      - PORT=8006
+      - DB_HOST=postgres
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+    expose:
+      - "8006"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8006/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - truth-engine-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+
+  report-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: truth-engine-report-service
+    restart: unless-stopped
+    command: >
+      uvicorn services.report_service.app:app 
+      --host 0.0.0.0 
+      --port 8007
+      --workers 2
+      --no-access-log
+    environment:
+      - SERVICE_NAME=report-service
+      - ENVIRONMENT=production
+      - DEBUG=false
+      - PORT=8007
+      - DB_HOST=postgres
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - S3_ENDPOINT_URL=http://minio:9000
+      - S3_ACCESS_KEY=${MINIO_ROOT_USER}
+      - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD}
+    expose:
+      - "8007"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8007/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - truth-engine-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+
+  # ==========================================================================
+  # Reverse Proxy (Optional - uncomment for SSL termination)
+  # ==========================================================================
+
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: truth-engine-nginx
+  #   restart: unless-stopped
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+  #     - ./nginx/ssl:/etc/nginx/ssl:ro
+  #   depends_on:
+  #     - api-gateway
+  #   networks:
+  #     - truth-engine-network
+
+volumes:
+  postgres_data:
+    driver: local
+  minio_data:
+    driver: local
+
+networks:
+  truth-engine-network:
+    driver: bridge
