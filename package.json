@@ -1,0 +1,31 @@
+{
+  "name": "the-project",
+  "version": "1.0.0",
+  "description": "> **A0-A9 Complete** — The First Domain of the Global Truth Engine",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FuzzDOT/CERTA.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/FuzzDOT/CERTA/issues"
+  },
+  "homepage": "https://github.com/FuzzDOT/CERTA#readme",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "firebase-admin": "^13.6.0",
+    "stripe": "^20.1.0"
+  }
+}
