@@ -1,4 +1,6 @@
-require("dotenv").config({ path: "/etc/secrets/.env" });
+if (process.env.NODE_ENV !== "production") {
+  require("dotenv").config();
+}
 const express = require("express");
 const cors = require("cors");
 const Stripe = require("stripe");
@@ -124,8 +126,8 @@ async function handleStripeEvent(event) {
 }
 
 const PORT = process.env.PORT || 4242;
-
 app.listen(PORT, () => {
-  console.log(`Stripe backend running on port ${PORT}`);
+  console.log("Stripe server running on port", PORT);
 });
+
 
