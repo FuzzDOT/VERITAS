@@ -123,6 +123,9 @@ async function handleStripeEvent(event) {
   }
 }
 
-app.listen(4242, () => {
-  console.log("Stripe backend running on http://localhost:4242");
+const PORT = process.env.PORT || 4242;
+
+app.listen(PORT, () => {
+  console.log(`Stripe backend running on port ${PORT}`);
 });
+
