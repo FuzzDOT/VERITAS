@@ -2,7 +2,6 @@ if (process.env.NODE_ENV !== "production") {
   require("dotenv").config();
 }
 const express = require("express");
-import cors from "cors";
 const cors = require("cors");
 const Stripe = require("stripe");
 const admin = require("firebase-admin");
