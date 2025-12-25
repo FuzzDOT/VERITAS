@@ -28,8 +28,8 @@ const db = admin.firestore();
 
 const PRICE_IDS = {
   starter: null,
-  pro_monthly: "price_1SheJA6k3VtieV2BGS2Qriyg",
-  pro_yearly: "price_1SheKb6k3VtieV2B1rC2yFDy",
+  pro_monthly: "price_1Si3I56k3VtieV2BgIuYByYy",
+  pro_yearly: "price_1Si3IL6k3VtieV2BTn7iZUe9",
 };
 
 app.post("/create-checkout-session", async (req, res) => {
