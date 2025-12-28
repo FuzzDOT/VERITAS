@@ -48,8 +48,8 @@ app.post("/create-checkout-session", async (req, res) => {
       mode: "subscription",
       payment_method_types: ["card"],
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: "https://veritas-chi-ten.vercel.app/chat",
-      cancel_url: "https://veritas-chi-ten.vercel.app/membership",
+      success_url: "https://veritas-official.vercel.app/chat",
+      cancel_url: "https://veritas-official.vercel.app/membership",
       metadata: { uid, tier, interval },
     });
 
