@@ -356,15 +356,12 @@ def create_app() -> FastAPI:
         tags=["Solvency"],
     )
 
-    # Legacy routes (for backward compatibility during transition)
-    # These will be deprecated in A2
-    if settings.debug:
-        app.include_router(
-            legacy_router,
-            prefix="/api/v1",
-            tags=["Legacy"],
-            deprecated=True,
-        )
+    # Main API routes (claims, evidence, reports, etc.)
+    app.include_router(
+        legacy_router,
+        prefix="/api/v1",
+        tags=["API"],
+    )
 
     return app
 
