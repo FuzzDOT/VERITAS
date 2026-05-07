@@ -1,6 +1,6 @@
 # Financial Solvency Truth Engine
 
-> **A0-A9 Complete** — The First Domain of the Global Truth Engine
+> A0 to A9 Complete. The First Domain of the Global Truth Engine.
 
 An institutional-grade backend system for deterministic truth verification of financial solvency claims. This system provides auditable, reproducible solvency determinations with complete provenance tracking.
 
@@ -51,11 +51,12 @@ Given a solvency claim like:
 ```
 
 The system:
+
 1. **Registers** the claim with a canonical ID
 2. **Collects** evidence (10-K filings, financial statements, etc.)
 3. **Extracts** structured facts (revenue, liabilities, cash flow)
 4. **Evaluates** solvency using deterministic reasoning rules
-5. **Produces** a probability interval: P(solvent) ∈ [p_low, p_high]
+5. **Produces** a probability interval: P(solvent) in [p_low, p_high]
 6. **Generates** an auditable report with full provenance
 7. **Versions** the truth determination for historical tracking
 
@@ -64,26 +65,34 @@ The system:
 ## Architectural Guarantees
 
 ### Determinism
+
 All operations are deterministic. Given the same inputs, the system produces identical outputs:
-- Same evidence → Same extracted facts
-- Same facts → Same probability interval
-- Same truth version → Same report (byte-for-byte)
+
+- Same evidence produces same extracted facts
+- Same facts produce same probability interval
+- Same truth version produces same report (byte-for-byte)
 
 ### Auditability
+
 Every action is traced with:
+
 - Immutable audit entries with SHA-256 hash chains
 - Complete before/after state capture
 - Correlation IDs across all services
 - Replay capability for any evaluation
 
 ### Refusal-First Behavior
+
 The system explicitly refuses to proceed when preconditions are not met:
-- Missing required evidence → `REFUSED` with specific missing items
-- Insufficient fact coverage → `REFUSED` with explanation
-- Policy violations → `REFUSED` with policy reference
+
+- Missing required evidence produces `REFUSED` with specific missing items
+- Insufficient fact coverage produces `REFUSED` with explanation
+- Policy violations produce `REFUSED` with policy reference
 
 ### Reproducibility
+
 Any truth determination can be replayed:
+
 ```bash
 POST /v1/trace/replay
 {
@@ -100,15 +109,15 @@ POST /v1/trace/replay
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                              API Gateway (A1)                                │
-│                          FastAPI - Port 8000                                 │
-│              Entry point, validation, routing, authentication               │
+│                          FastAPI  Port 8000                                  │
+│              Entry point, validation, routing, authentication                │
 └─────────────────────────────────────────────────────────────────────────────┘
                                       │
                                       ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                         Truth Orchestrator (A2)                              │
-│                      Workflow Coordination - Port 8001                       │
-│              Deterministic execution, saga patterns, retries                │
+│                      Workflow Coordination  Port 8001                        │
+│              Deterministic execution, saga patterns, retries                 │
 └─────────────────────────────────────────────────────────────────────────────┘
                                       │
             ┌─────────────────────────┼─────────────────────────┐
@@ -118,9 +127,9 @@ POST /v1/trace/replay
 │   Claim Service     │   │  Evidence Service   │   │ Extraction Service  │
 │   (A3) Port 8002    │   │   (A4) Port 8003    │   │   (A5) Port 8004    │
 │                     │   │                     │   │                     │
-│ • Claim lifecycle   │   │ • Document storage  │   │ • PDF/XBRL parsing  │
-│ • Canonical IDs     │   │ • Metadata index    │   │ • Fact extraction   │
-│ • Status tracking   │   │ • Provenance        │   │ • Confidence scores │
+│  Claim lifecycle    │   │  Document storage   │   │  PDF/XBRL parsing   │
+│  Canonical IDs      │   │  Metadata index     │   │  Fact extraction    │
+│  Status tracking    │   │  Provenance         │   │  Confidence scores  │
 └─────────────────────┘   └─────────────────────┘   └─────────────────────┘
             │                         │                         │
             └─────────────────────────┼─────────────────────────┘
@@ -128,12 +137,12 @@ POST /v1/trace/replay
                                       ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                         Reasoning Engine (A6)                                │
-│                      Pure Functions - No Side Effects                        │
+│                      Pure Functions. No Side Effects.                        │
 │                                                                              │
-│  • Solvency evaluation with probability intervals                           │
-│  • Fragility analysis and sensitivity scoring                               │
-│  • Risk identification and categorization                                   │
-│  • Policy enforcement and refusal logic                                     │
+│   Solvency evaluation with probability intervals                             │
+│   Fragility analysis and sensitivity scoring                                 │
+│   Risk identification and categorization                                     │
+│   Policy enforcement and refusal logic                                       │
 └─────────────────────────────────────────────────────────────────────────────┘
                                       │
             ┌─────────────────────────┼─────────────────────────┐
@@ -143,9 +152,9 @@ POST /v1/trace/replay
 │ Trace & Audit Svc   │   │Truth Versioning Svc │   │   Report Service    │
 │   (A7) Port 8005    │   │   (A8) Port 8006    │   │   (A9) Port 8007    │
 │                     │   │                     │   │                     │
-│ • Hash chains       │   │ • Version history   │   │ • Jinja2 HTML       │
-│ • Replay support    │   │ • Current truth     │   │ • WeasyPrint PDF    │
-│ • Tamper detection  │   │ • Promotion rules   │   │ • Deterministic     │
+│  Hash chains        │   │  Version history    │   │  Jinja2 HTML        │
+│  Replay support     │   │  Current truth      │   │  WeasyPrint PDF     │
+│  Tamper detection   │   │  Promotion rules    │   │  Deterministic      │
 └─────────────────────┘   └─────────────────────┘   └─────────────────────┘
 ```
 
@@ -158,7 +167,7 @@ POST /v1/trace/replay
 | Claim Service | 8002 | A3 | Claim registration and lifecycle |
 | Evidence Service | 8003 | A4 | Evidence collection and storage |
 | Extraction Service | 8004 | A5 | Fact extraction from documents |
-| Reasoning Engine | — | A6 | Pure functions (library, not a service) |
+| Reasoning Engine | n/a | A6 | Pure functions (library, not a service) |
 | Trace & Audit Service | 8005 | A7 | Immutable audit logging |
 | Truth Versioning Service | 8006 | A8 | Truth state management |
 | Report Service | 8007 | A9 | Report generation |
@@ -194,10 +203,10 @@ tenacity>=8.2.0           # Retry logic
 jinja2>=3.1.0             # HTML templating
 ```
 
-Optional dependencies:
+Optional:
 
 ```
-weasyprint>=62.3          # PDF generation (optional)
+weasyprint>=62.3          # PDF generation
 ```
 
 ### Infrastructure
@@ -214,41 +223,33 @@ weasyprint>=62.3          # PDF generation (optional)
 ### Option 1: Docker (Recommended)
 
 ```bash
-# Clone the repository
 git clone https://github.com/your-org/truth-engine.git
 cd truth-engine
 
-# Start all services
 docker-compose up -d
 
-# Verify health
 curl http://localhost:8000/health
 ```
 
 ### Option 2: Local Development
 
 ```bash
-# Create virtual environment
 python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
+source .venv/bin/activate
 
-# Install package with dev dependencies
 pip install -e ".[dev]"
 
-# Start infrastructure only
 docker-compose up -d postgres minio minio-init
 
-# Set environment variables
 export DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5432/truth_engine"
 export S3_ENDPOINT_URL="http://localhost:9000"
 export S3_ACCESS_KEY="minioadmin"
 export S3_SECRET_KEY="minioadmin"
 
-# Run API Gateway
 cd src && uvicorn services.api_gateway.app:app --reload --port 8000
 ```
 
-### Option 3: Install WeasyPrint for PDF Support
+### Option 3: WeasyPrint for PDF Support
 
 ```bash
 # macOS
@@ -259,7 +260,6 @@ pip install weasyprint
 apt-get install libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf2.0-0
 pip install weasyprint
 
-# Verify installation
 python -c "import weasyprint; print('PDF support enabled')"
 ```
 
@@ -289,6 +289,7 @@ curl -X POST http://localhost:8000/v1/claims \
 ```
 
 Response:
+
 ```json
 {
   "success": true,
@@ -304,7 +305,6 @@ Response:
 ### 3. Check Health
 
 ```bash
-# All services
 for port in 8000 8001 8002 8003 8004 8005 8006 8007; do
   echo "Port $port: $(curl -s http://localhost:$port/health | jq -r .status)"
 done
@@ -314,7 +314,7 @@ done
 
 ## API Reference
 
-### API Gateway Endpoints (Port 8000)
+### API Gateway (Port 8000)
 
 #### Claims
 
@@ -347,7 +347,7 @@ done
 | `GET` | `/v1/truth/{claim_class_key}/current` | Get current truth version |
 | `GET` | `/v1/truth/{claim_class_key}/history` | Get truth version history |
 
-### Report Service Endpoints (Port 8007)
+### Report Service (Port 8007)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -358,7 +358,7 @@ done
 | `GET` | `/v1/reports/by-truth/{truth_version_id}` | List reports for truth version |
 | `GET` | `/v1/reports/version` | Get service version info |
 
-### Truth Versioning Endpoints (Port 8006)
+### Truth Versioning (Port 8006)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -368,7 +368,7 @@ done
 | `GET` | `/v1/truth-versions/history/{claim_class_key}` | Get version history |
 | `POST` | `/v1/truth-versions/{id}/promote` | Promote to current |
 
-### Trace & Audit Endpoints (Port 8005)
+### Trace & Audit (Port 8005)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -377,11 +377,12 @@ done
 | `POST` | `/v1/traces/replay` | Replay an evaluation |
 | `GET` | `/v1/audit/{entity_id}` | Get audit entries for entity |
 
-### Documentation
+### Interactive Docs
 
-Interactive API documentation available at:
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
+| Interface | URL |
+|-----------|-----|
+| Swagger UI | http://localhost:8000/docs |
+| ReDoc | http://localhost:8000/redoc |
 
 ---
 
@@ -392,12 +393,14 @@ Interactive API documentation available at:
 The central entry point for all external requests.
 
 **Responsibilities:**
+
 - Request validation with Pydantic
 - Rate limiting and authentication context
 - Request routing to downstream services
 - Error standardization
 
-**Key Schemas:**
+**Key Schema:**
+
 ```python
 CreateClaimRequest(
     entity_id: str,           # e.g., "US0378331005"
@@ -405,26 +408,29 @@ CreateClaimRequest(
     scenario_name: str,       # going_concern, liquidity, etc.
     jurisdiction: str,        # US, EU, UK, etc.
     horizon_months: int,      # 6, 12, 24, 36
-    as_of_date: date          # Reference date
+    as_of_date: date
 )
 ```
 
 ### A3: Claim Service
 
-Manages the lifecycle of solvency claims.
+Manages the full lifecycle of solvency claims.
 
 **Claim States:**
-- `pending` → Initial state
-- `processing` → Evaluation in progress
-- `evaluated` → Determination complete
-- `refused` → Cannot evaluate (missing data)
-- `superseded` → Replaced by newer version
+
+| State | Meaning |
+|-------|---------|
+| `pending` | Initial state |
+| `processing` | Evaluation in progress |
+| `evaluated` | Determination complete |
+| `refused` | Cannot evaluate due to missing data |
+| `superseded` | Replaced by newer version |
 
 **Canonical ID Format:**
+
 ```
 clm_01HXY2ABC123DEF456GHI789JKL0
-    ├── Entity type prefix
-    └── ULID (time-sortable, unique)
+     ULID (time-sortable, globally unique)
 ```
 
 ### A4: Evidence Service
@@ -432,12 +438,14 @@ clm_01HXY2ABC123DEF456GHI789JKL0
 Collects and stores evidence documents.
 
 **Supported Evidence Types:**
-- `10-K` / `10-Q` — SEC annual/quarterly filings
-- `Financial_Statement` — Balance sheet, income statement
-- `Regulatory_Filing` — Other regulatory documents
-- `Market_Data` — Stock prices, credit ratings
+
+- `10-K` / `10-Q`: SEC annual/quarterly filings
+- `Financial_Statement`: Balance sheet, income statement
+- `Regulatory_Filing`: Other regulatory documents
+- `Market_Data`: Stock prices, credit ratings
 
 **Storage:**
+
 - Metadata in PostgreSQL
 - Documents in MinIO (S3-compatible)
 - Content-addressed by SHA-256 hash
@@ -447,12 +455,14 @@ Collects and stores evidence documents.
 Extracts structured facts from evidence documents.
 
 **Fact Types:**
+
 - `total_revenue`, `net_income`, `total_assets`
 - `total_liabilities`, `cash_and_equivalents`
 - `current_ratio`, `debt_to_equity`
 - `operating_cash_flow`, `working_capital`
 
 **Fact Schema:**
+
 ```python
 ExtractedFact(
     fact_id: str,
@@ -462,44 +472,49 @@ ExtractedFact(
     currency: str | None,
     as_of_date: date,
     period_end: date | None,
-    confidence: Decimal,    # 0.0 - 1.0
+    confidence: Decimal,    # 0.0 to 1.0
     extraction_method: str, # llm, regex, xbrl
-    evidence_id: str        # Source evidence
+    evidence_id: str
 )
 ```
 
 ### A6: Reasoning Engine
 
-**Pure functions only — no side effects.**
+Pure functions only. No side effects.
 
 **Evaluation Output:**
+
 ```python
 EvaluationResult(
     conclusion: str,           # "solvent", "insolvent", "refused"
     probability_interval: ProbabilityInterval(
-        p_low: Decimal,        # Lower bound
-        p_mid: Decimal,        # Best estimate
-        p_high: Decimal        # Upper bound
+        p_low: Decimal,
+        p_mid: Decimal,
+        p_high: Decimal
     ),
-    fragility_score: Decimal,  # 0.0 - 1.0 (stability)
+    fragility_score: Decimal,  # 0.0 to 1.0
     top_sensitivity_driver: str,
     key_risks: list[KeyRisk],
-    trace_hash: str,           # Reproducibility hash
+    trace_hash: str,
     result_hash: str
 )
 ```
 
 **Refusal Codes:**
-- `MISSING_EVIDENCE` — Required documents not found
-- `INSUFFICIENT_FACTS` — Cannot extract needed metrics
-- `CONFLICTING_DATA` — Irreconcilable evidence conflict
-- `POLICY_VIOLATION` — Evaluation blocked by policy
+
+| Code | Reason |
+|------|--------|
+| `MISSING_EVIDENCE` | Required documents not found |
+| `INSUFFICIENT_FACTS` | Cannot extract needed metrics |
+| `CONFLICTING_DATA` | Irreconcilable evidence conflict |
+| `POLICY_VIOLATION` | Evaluation blocked by policy |
 
 ### A7: Trace & Audit Service
 
 Provides tamper-evident audit logging.
 
 **Hash Chain:**
+
 ```
 Entry[n].hash = SHA256(
     Entry[n].data +
@@ -508,6 +523,7 @@ Entry[n].hash = SHA256(
 ```
 
 **Audit Entry:**
+
 ```python
 AuditEntry(
     audit_id: str,
@@ -528,6 +544,7 @@ AuditEntry(
 Manages the version history of truth determinations.
 
 **Truth Version:**
+
 ```python
 TruthVersion(
     truth_version_id: str,
@@ -547,6 +564,7 @@ TruthVersion(
 ```
 
 **Promotion Rules:**
+
 - Only verified evaluations can be promoted
 - Previous current version is marked `is_current=False`
 - All promotions are audited
@@ -556,16 +574,18 @@ TruthVersion(
 Generates deterministic, reproducible reports.
 
 **Determinism Guarantees:**
+
 - Fixed numeric precision (4 decimal places for probabilities)
 - Sorted lists (evidence by ID, facts by ID, risks by type)
 - Canonical timestamp format (ISO 8601 UTC)
 - UTF-8 encoding with normalized line endings
 
 **Report Sections:**
+
 1. Claim Summary
 2. Evaluation Metadata
 3. Policy Configuration
-4. Conclusion (Solvent/Insolvent/Refused)
+4. Conclusion (Solvent / Insolvent / Refused)
 5. Probability Interval
 6. Risk Analysis & Fragility
 7. Intermediate Metrics
@@ -577,7 +597,7 @@ Generates deterministic, reproducible reports.
 
 ## Data Models
 
-### Core Entities
+### Core Entity Relationships
 
 ```
 ┌─────────────┐       ┌──────────────┐       ┌─────────────────┐
@@ -593,13 +613,13 @@ Generates deterministic, reproducible reports.
        ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                     Truth Version                            │
-│  (Immutable snapshot of evaluation at point in time)        │
+│  Immutable snapshot of evaluation at point in time          │
 └─────────────────────────────────────────────────────────────┘
        │
        ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                         Report                               │
-│  (Deterministic HTML/PDF with full provenance)              │
+│  Deterministic HTML/PDF with full provenance                │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -620,7 +640,7 @@ Generates deterministic, reproducible reports.
 
 ## Outputs
 
-### 1. Evaluation Result
+### Evaluation Result
 
 ```json
 {
@@ -646,7 +666,7 @@ Generates deterministic, reproducible reports.
 }
 ```
 
-### 2. Truth Version
+### Truth Version
 
 ```json
 {
@@ -667,9 +687,10 @@ Generates deterministic, reproducible reports.
 }
 ```
 
-### 3. HTML Report
+### HTML Report
 
 Deterministic HTML document containing:
+
 - Full claim details and evaluation metadata
 - Probability interval with visual representation
 - Risk analysis and fragility interpretation
@@ -677,9 +698,9 @@ Deterministic HTML document containing:
 - Integrity hashes for verification
 - Replay instructions
 
-### 4. PDF Report (Optional)
+### PDF Report
 
-WeasyPrint-generated PDF from HTML. Note: PDF is not byte-for-byte deterministic due to font rendering. The **HTML hash is authoritative**.
+WeasyPrint-generated PDF from HTML. Note: PDF output is not byte-for-byte deterministic due to font rendering. The HTML hash is authoritative.
 
 ---
 
@@ -693,14 +714,14 @@ DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/dbname
 DB_POOL_SIZE=10
 DB_MAX_OVERFLOW=20
 
-# Object Storage (S3-compatible)
+# Object Storage
 S3_ENDPOINT_URL=http://minio:9000
 S3_ACCESS_KEY=minioadmin
 S3_SECRET_KEY=minioadmin
 S3_BUCKET_EVIDENCE=evidence
 S3_BUCKET_REPORTS=reports
 
-# Service URLs (for inter-service communication)
+# Service URLs
 CLAIM_SERVICE_URL=http://claim-service:8002
 EVIDENCE_SERVICE_URL=http://evidence-service:8003
 EXTRACTION_SERVICE_URL=http://extraction-service:8004
@@ -713,7 +734,7 @@ LOG_LEVEL=INFO
 LOG_FORMAT=json
 
 # Optional
-WEASYPRINT_AVAILABLE=true  # Set to false to disable PDF
+WEASYPRINT_AVAILABLE=true
 ```
 
 ### Docker Compose Services
@@ -756,16 +777,12 @@ services:
 ### Running Locally
 
 ```bash
-# Activate virtual environment
 source .venv/bin/activate
 
-# Start infrastructure
 docker-compose up -d postgres minio minio-init
 
-# Run individual service
 cd src && uvicorn services.api_gateway.app:app --reload --port 8000
 
-# Run with auto-reload
 uvicorn services.report_service.app:app --reload --port 8007
 ```
 
@@ -784,13 +801,10 @@ uvicorn services.report_service.app:app --reload --port 8007
 ### Run All Tests
 
 ```bash
-# Full test suite (427 tests)
 pytest tests/ -v
 
-# With coverage report
 pytest tests/ --cov=src --cov-report=term-missing
 
-# Specific service
 pytest tests/test_report_service_a9.py -v
 ```
 
@@ -801,10 +815,10 @@ Current coverage: **71%** (427 tests passing)
 | Component | Coverage |
 |-----------|----------|
 | Models | 100% |
-| Schemas | 97-100% |
+| Schemas | 97 to 100% |
 | Reasoning Engine | 77% |
 | Report Generator | 84% |
-| Routes | 56-75% |
+| Routes | 56 to 75% |
 
 ### Type Checking
 
@@ -826,43 +840,43 @@ black src --check
 ```
 .
 ├── src/
-│   ├── shared/                      # Shared libraries
-│   │   ├── canonical_id/            # ULID-based ID generation
-│   │   ├── hashing/                 # SHA-256 content hashing
-│   │   ├── errors/                  # Refusal-first error types
-│   │   ├── schemas/                 # Common Pydantic schemas
-│   │   ├── config/                  # Environment configuration
-│   │   └── logging/                 # Structured logging (structlog)
+│   ├── shared/                       # Shared libraries
+│   │   ├── canonical_id/             # ULID-based ID generation
+│   │   ├── hashing/                  # SHA-256 content hashing
+│   │   ├── errors/                   # Refusal-first error types
+│   │   ├── schemas/                  # Common Pydantic schemas
+│   │   ├── config/                   # Environment configuration
+│   │   └── logging/                  # Structured logging (structlog)
 │   │
-│   ├── infrastructure/              # Infrastructure abstractions
-│   │   ├── postgres/                # SQLAlchemy async models
-│   │   │   ├── models.py            # All ORM models
-│   │   │   ├── session.py           # Session management
-│   │   │   └── fact_store.py        # Fact storage operations
-│   │   ├── object_store/            # S3-compatible interface
-│   │   ├── graph_store/             # Graph database (future)
-│   │   ├── vector_store/            # Vector similarity (future)
-│   │   └── workflow/                # Workflow orchestration
+│   ├── infrastructure/               # Infrastructure abstractions
+│   │   ├── postgres/                 # SQLAlchemy async models
+│   │   │   ├── models.py             # All ORM models
+│   │   │   ├── session.py            # Session management
+│   │   │   └── fact_store.py         # Fact storage operations
+│   │   ├── object_store/             # S3-compatible interface
+│   │   ├── graph_store/              # Graph database (future)
+│   │   ├── vector_store/             # Vector similarity (future)
+│   │   └── workflow/                 # Workflow orchestration
 │   │
-│   └── services/                    # Microservices
-│       ├── api_gateway/             # A1: REST API entry point
-│       ├── truth_orchestrator/      # A2: Workflow coordination
-│       ├── claim_service/           # A3: Claim management
-│       ├── evidence_service/        # A4: Evidence handling
-│       ├── extraction_service/      # A5: Fact extraction
-│       ├── reasoning_engine/        # A6: Pure reasoning
-│       ├── trace_audit_service/     # A7: Audit logging
-│       ├── truth_versioning_service/# A8: Version management
-│       └── report_service/          # A9: Report generation
-│           ├── app.py               # FastAPI application
-│           ├── schemas.py           # Pydantic schemas
-│           ├── routes.py            # REST endpoints
-│           ├── generator.py         # Report generation logic
-│           ├── stores.py            # Storage layer
-│           └── templates/           # Jinja2 HTML templates
+│   └── services/                     # Microservices
+│       ├── api_gateway/              # A1: REST API entry point
+│       ├── truth_orchestrator/       # A2: Workflow coordination
+│       ├── claim_service/            # A3: Claim management
+│       ├── evidence_service/         # A4: Evidence handling
+│       ├── extraction_service/       # A5: Fact extraction
+│       ├── reasoning_engine/         # A6: Pure reasoning
+│       ├── trace_audit_service/      # A7: Audit logging
+│       ├── truth_versioning_service/ # A8: Version management
+│       └── report_service/           # A9: Report generation
+│           ├── app.py                # FastAPI application
+│           ├── schemas.py            # Pydantic schemas
+│           ├── routes.py             # REST endpoints
+│           ├── generator.py          # Report generation logic
+│           ├── stores.py             # Storage layer
+│           └── templates/            # Jinja2 HTML templates
 │
-├── tests/                           # Test suite
-│   ├── conftest.py                  # Pytest fixtures
+├── tests/
+│   ├── conftest.py
 │   ├── test_api_gateway_a1.py
 │   ├── test_claim_service_a3.py
 │   ├── test_evidence_service_a4.py
@@ -873,19 +887,13 @@ black src --check
 │   └── test_report_service_a9.py
 │
 ├── scripts/
-│   └── init-db.sql                  # Database initialization
+│   └── init-db.sql
 │
-├── docker-compose.yml               # Container orchestration
-├── Dockerfile                       # Container build
-├── pyproject.toml                   # Python project config
-└── README.md                        # This file
+├── docker-compose.yml
+├── Dockerfile
+├── pyproject.toml
+└── README.md
 ```
-
----
-
-## License
-
-MIT License — See LICENSE file for details.
 
 ---
 
@@ -893,17 +901,23 @@ MIT License — See LICENSE file for details.
 
 | Term | Definition |
 |------|------------|
-| **Claim** | A statement about entity solvency to be verified |
-| **Claim Class Key** | Canonical identifier for claim type + entity |
-| **Evidence** | Documents supporting claim evaluation |
-| **Fact** | Structured data extracted from evidence |
-| **Evaluation** | Single run of reasoning engine |
-| **Truth Version** | Immutable snapshot of evaluation result |
-| **Fragility Score** | Measure of result stability (0=robust, 1=fragile) |
-| **Refusal** | Explicit decline to evaluate due to missing data |
-| **Trace** | Complete execution record for replay |
-| **Provenance** | Origin and lineage of data |
+| Claim | A statement about entity solvency to be verified |
+| Claim Class Key | Canonical identifier for claim type and entity |
+| Evidence | Documents supporting claim evaluation |
+| Fact | Structured data extracted from evidence |
+| Evaluation | Single run of the reasoning engine |
+| Truth Version | Immutable snapshot of an evaluation result |
+| Fragility Score | Measure of result stability (0 = robust, 1 = fragile) |
+| Refusal | Explicit decline to evaluate due to missing or conflicting data |
+| Trace | Complete execution record for replay |
+| Provenance | Origin and lineage of data |
 
 ---
 
-**Note**: This system is the A0-A9 foundation of the Financial Solvency Truth Engine, the first domain of the planned Global Truth Engine. The architecture is designed to extend to additional truth domains while maintaining the core guarantees of determinism, auditability, and reproducibility.
+## License
+
+MIT License. See LICENSE file for details.
+
+---
+
+> This system is the A0 to A9 foundation of the Financial Solvency Truth Engine, the first domain of the planned Global Truth Engine. The architecture is designed to extend to additional truth domains while maintaining the core guarantees of determinism, auditability, and reproducibility.
