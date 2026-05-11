@@ -1,6 +1,6 @@
 # Financial Solvency Truth Engine
 
-**An institutional-grade backend system for deterministic, auditable, and reproducible verification of financial solvency claims, built as a microservice architecture across nine independently deployable services.**
+**An institutional grade backend system for deterministic, auditable, and reproducible verification of financial solvency claims, built as a microservice architecture across nine independently deployable services.**
 
 The Truth Engine evaluates whether a named entity is solvent over a given time horizon, using structured evidence collected from regulatory filings, financial statements, and market data. Every evaluation is cryptographically traceable, version-controlled, and byte-for-byte reproducible on demand.
 
