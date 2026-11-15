@@ -865,4 +865,4 @@ cd src && uvicorn services.report_service.app:app --reload --port 8007
 
 ## License
 
-Copyright Faaz Mohamed. All rights reserved. See LICENSE for details.
+Copyright Faaz Mohamed. MIT.
